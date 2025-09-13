@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Code Learning Assistant</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    header { background: #222; color: white; padding: 10px; }
+    #editor { height: 300px; width: 100%; }
+    #output { background: #111; color: #0f0; padding: 10px; min-height: 150px; white-space: pre-wrap; }
+    .controls { margin: 10px; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.11.2/ace.js"></script>
+</head>
+<body>
+  <header>
+    <h2>Code Learning Assistant</h2>
+  </header>
+
+  <div class="controls">
+    <label>Language:</label>
+    <select id="lang">
+      <option value="python">Python</option>
+      <option value="javascript">JavaScript</option>
+      <option value="c">C</option>
+      <option value="cpp">C++</option>
+      <option value="java">Java</option>
+    </select>
+    <button onclick="runCode()">Run ▶</button>
+  </div>
+
+  <div id="editor">print("Hello, world!")</div>
+
+  <h3>Output:</h3>
+  <div id="output">Run your code to see output...</div>
+
+  <script>
+    const editor = ace.edit("editor");
+    editor.setTheme("ace/theme/monokai");
+    editor.session.setMode("ace/mode/python");
+
+    document.getElementById("lang").addEventListener("change", function() {
+      const lang = this.value;
+      const modes = {python: "python", javascript: "javascript", c: "c_cpp", cpp: "c_cpp", java: "java"};
+      editor.session.setMode("ace/mode/" + (modes[lang] || "text"));
+    });
+
+    async function runCode() {
+      const lang = document.getElementById("lang").value;
+      const code = editor.getValue();
+
+      document.getElementById("output").textContent = "Running...";
+
+      const resp = await fetch("/run", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({language: lang, source: code})
+      });
+
+      const data = await resp.json();
+      if (data.status === "success") {
+        const r = data.result;
+        let out = "";
+        out += "Status: " + (r.status.description || "Unknown") + "\n";
+        if (r.stdout) out += "Output:\n" + r.stdout + "\n";
+        if (r.stderr) out += "Error:\n" + r.stderr + "\n";
+        if (r.compile_output) out += "Compiler:\n" + r.compile_output + "\n";
+        document.getElementById("output").textContent = out;
+      } else {
+        document.getElementById("output").textContent = "Error: " + data.message;
+      }
+    }
+  </script>
+</body>
+</html>
